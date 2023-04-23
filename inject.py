@@ -1,5 +1,6 @@
 
 import os
+import argparse
 
 class EOCD:
 
@@ -84,8 +85,21 @@ def inject_file(zip_file, secret_file, output_file = "ouput.zip"):
     hide_secret(zip_file, secret_file, output_file, eocd)
 
 
-zip_file = 'test.zip'
-secret_file = 'secret.txt'
-output_file = "new_test.zip"
+if __name__ == "__main__":
 
-inject_file(zip_file, secret_file, output_file)
+    parser = argparse.ArgumentParser(description='Scrypt for hiding files in zip archive')
+
+    parser.add_argument('zip_file', type=str,
+                        help='name of the archive you want to hide a secret in')
+    parser.add_argument('secret_file', type=str,
+                        help='name of secret the hide')
+    parser.add_argument('output_file', type=str, nargs='?', default = "output.zip",
+                        help='output ZIP archive')
+
+    args = parser.parse_args()
+
+    #zip_file = 'test.zip'
+    #secret_file = 'secret.txt'
+    #output_file = "new_test.zip"
+    inject_file(args.zip_file, args.secret_file, args.output_file)
+    #inject_file(sys.argv[1], sys.argv[2], sys.argv[3])
