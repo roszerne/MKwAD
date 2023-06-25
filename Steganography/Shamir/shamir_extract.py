@@ -51,16 +51,16 @@ def parse_eocd(zip_file):
 
     return eocd_record
 
-def extract_secret(zip_file, output_file, threshold):
+def extract_secret(zip_file, output_file):
 
     file_shares = []
     num_of_secrets = 0
 
-    for i in range (0, threshold):
-        with open(zip_file + str(i + 1) + ".zip", 'rb') as input_file:
+    for i in range (0, len(zip_file)):
+        with open(zip_file[i], 'rb') as input_file:
 
             # Step 1: get End Of Central Directory record from ZIP file
-            eocd = parse_eocd(zip_file + str(i + 1) + ".zip")
+            eocd = parse_eocd(zip_file[i])
 
             # get byte length of secret file
             input_file.seek(eocd.cd_offset)
@@ -87,15 +87,9 @@ def extract_secret(zip_file, output_file, threshold):
     key = []
     for i in range(0, num_of_secrets):
         shares = []
-        for j in range(0, threshold):
+        for j in range(0, len(zip_file)):
             shares.append(file_shares[j][i])
-        if i == 0:
-            print(shares)
         key.append(Shamir.combine(shares))
-
-    print(key[0])
-    print(key[1])
-    print(key[-1])
 
     with open(output_file, 'wb') as output_file:
         
@@ -103,23 +97,15 @@ def extract_secret(zip_file, output_file, threshold):
             output_file.write(key[i])
 
 
-def extract_file(zip_file, output_file, threshold):
-
-    # Step 2: Create new file and hide secret in it
-    extract_secret(zip_file, output_file, threshold)
-
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Scrypt for hiding files in zip archive')
+    parser = argparse.ArgumentParser(description='Scrypt for extracting files from zip archives')
 
-    parser.add_argument('zip_file', type=str,
-                        help='name of the archive you want to extract the secret from')
     parser.add_argument('output_file', type=str,
                         help='output secret file')
-    parser.add_argument('threshold', type=int, 
-                        help='threshold of secret')
+    parser.add_argument("--archives", nargs="+", help="List of zip archives")
 
 
     args = parser.parse_args()
 
-extract_file(args.zip_file, args.output_file, args.threshold)
+extract_secret(args.archives, args.output_file)

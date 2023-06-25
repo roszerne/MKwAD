@@ -46,37 +46,43 @@ def parse_eocd(zip_file):
 
     return eocd_record
 
-def hide_secret(zip_file, secret_file, output_file_name, eocd):
+def hide_secret(zip_files, secret_file):
 
-    with open(zip_file, 'rb') as input_file, open(secret_file, 'rb') as secret:
+    shares = []
+    data_secrets = []
+
+    with open(secret_file, 'rb') as secret:
 
         secret_data = secret.read()
         data_secrets = [secret_data[i:i+16] for i in range(0, len(secret_data), 16)]
 
+        #padding
         if len(data_secrets[-1]) < 16:
             data_secrets[-1] += b'2' 
             for i in range(0, 16 - len(data_secrets[-1])):
                 data_secrets[-1] += b'0'
 
-        shares = []
-
         for i in range(0, len(data_secrets)):
-            shares.append(Shamir.split(2, eocd.total_num_of_cd_records, data_secrets[i]))
+            shares.append(Shamir.split(2, len(zip_files), data_secrets[i]))
 
-        # copy all data up to first Central Directory header
-        data = input_file.read(eocd.cd_offset)
+    for i in range(0, len(zip_files)):
 
-        input_file.seek(eocd.cd_offset)
-        central_directory_headers = input_file.read(eocd.eocd_pos - eocd.cd_offset)
-        # update information about Central Directory offset in EOCD
-        new_eocd_offset = eocd.cd_offset + (16 * len(data_secrets)) + 4 + 1
-        ba = bytearray(eocd.eocd)
-        ba[16:20] = new_eocd_offset.to_bytes(4, 'little')
-        b_new = bytes(ba)
+        with open(zip_files[i], 'rb') as input_file: 
 
-        for i in range(0, eocd.total_num_of_cd_records):
+            eocd = parse_eocd(zip_files[i])
+            # copy all data up to first Central Directory header
+            data = input_file.read(eocd.cd_offset)
 
-            with open(output_file_name + str(i + 1) + ".zip", 'wb') as output_file:
+            input_file.seek(eocd.cd_offset)
+            central_directory_headers = input_file.read(eocd.eocd_pos - eocd.cd_offset)
+
+            # update information about Central Directory offset in EOCD
+            new_eocd_offset = eocd.cd_offset + (16 * len(data_secrets)) + 4 + 1
+            ba = bytearray(eocd.eocd)
+            ba[16:20] = new_eocd_offset.to_bytes(4, 'little')
+            b_new = bytes(ba)
+
+            with open("out_" + zip_files[i], 'wb') as output_file:
 
                 output_file.write(data)
 
@@ -93,28 +99,15 @@ def hide_secret(zip_file, secret_file, output_file_name, eocd):
                 # copy modified eocd header
                 output_file.write(b_new)
 
-
-def inject_file(zip_file, secret_file, output_file = "ouput"):
-
-    # Step 1: get End Of Central Directory record from ZIP file
-    eocd = parse_eocd(zip_file)
-
-    # Step 2: Create new file and hide secret in it
-    hide_secret(zip_file, secret_file, output_file, eocd)
-
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Scrypt for hiding files in zip archive')
 
-    parser.add_argument('zip_file', type=str,
-                        help='name of the archive you want to hide a secret in')
     parser.add_argument('secret_file', type=str,
                         help='name of secret the hide')
-    parser.add_argument('output_file', type=str, nargs='?', default = "output",
-                        help='output ZIP archive')
+    parser.add_argument("--archives", nargs="+", help="List of zip archives")
 
     args = parser.parse_args()
-
-    inject_file(args.zip_file, args.secret_file, args.output_file)
+    
+    hide_secret(args.archives, args.secret_file)
 
