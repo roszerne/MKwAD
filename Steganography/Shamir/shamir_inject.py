@@ -46,7 +46,7 @@ def parse_eocd(zip_file):
 
     return eocd_record
 
-def hide_secret(zip_files, secret_file):
+def hide_secret(zip_files, threshold, secret_file):
 
     shares = []
     data_secrets = []
@@ -63,7 +63,7 @@ def hide_secret(zip_files, secret_file):
                 data_secrets[-1] += b'0'
 
         for i in range(0, len(data_secrets)):
-            shares.append(Shamir.split(2, len(zip_files), data_secrets[i]))
+            shares.append(Shamir.split(threshold, len(zip_files), data_secrets[i]))
 
     for i in range(0, len(zip_files)):
 
@@ -105,9 +105,10 @@ if __name__ == "__main__":
 
     parser.add_argument('secret_file', type=str,
                         help='name of secret the hide')
+    parser.add_argument("threshold", type=int, help="Treshold for secret")
     parser.add_argument("--archives", nargs="+", help="List of zip archives")
 
     args = parser.parse_args()
     
-    hide_secret(args.archives, args.secret_file)
+    hide_secret(args.archives, args.threshold, args.secret_file)
 
