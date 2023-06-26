@@ -45,32 +45,29 @@ def parse_eocd(zip_file):
 
     return eocd_record
 
-def extract_secret(zip_file, output_file, eocd):
+def extract_secret(zip_file, output_file, byte_offset, eocd):
 
     with open(zip_file, 'rb') as input_file, open(output_file, 'wb') as output_file:
 
         # get byte length of secret file
         input_file.seek(eocd.cd_offset)
-        print(eocd.cd_offset)
         input_file.seek(-4, 1)
         secret_length = input_file.read(4)
-        print(secret_length)
         secret_length = int.from_bytes(secret_length, 'little')
-        print(secret_length)
         
-
         # copy all data up to first Central Directory header
         input_file.seek(-(4 + secret_length), 1)
         data = input_file.read(secret_length)
-        output_file.write(data)
+        incremented_bytes = bytes((byte - byte_offset) % 256 for byte in data)
+        output_file.write(incremented_bytes)
 
-def extract_file(zip_file, output_file):
+def extract_file(zip_file, output_file, byte_offset = 0):
 
     # Step 1: get End Of Central Directory record from ZIP file
     eocd = parse_eocd(zip_file)
 
     # Step 2: Create new file and hide secret in it
-    extract_secret(zip_file, output_file, eocd)
+    extract_secret(zip_file, output_file, byte_offset, eocd)
 
 if __name__ == "__main__":
 
@@ -80,7 +77,9 @@ if __name__ == "__main__":
                         help='name of the archive you want to extract the secret from')
     parser.add_argument('output_file', type=str,
                         help='output secret file')
+    parser.add_argument('byte_offset', type=int, nargs='?', default = 0,
+                    help='bytes offset of secret file')
 
     args = parser.parse_args()
 
-extract_file(args.zip_file, args.output_file)
+extract_file(args.zip_file, args.output_file, args.byte_offset)

@@ -50,7 +50,7 @@ def parse_eocd(zip_file):
 
     return eocd_record
 
-def hide_secret(zip_file, secret_file, output_file, eocd):
+def hide_secret(zip_file, secret_file, output_file, byte_offset, eocd):
 
     with open(zip_file, 'rb') as input_file, open(output_file, 'wb') as output_file, open(secret_file, 'rb') as secret:
 
@@ -58,8 +58,11 @@ def hide_secret(zip_file, secret_file, output_file, eocd):
         data = input_file.read(eocd.cd_offset)
         output_file.write(data)
 
+        data = secret.read()
+        incremented_bytes = bytes((byte + byte_offset) % 256 for byte in data)
+
         # copy the file we want to hide
-        output_file.write(secret.read())
+        output_file.write(incremented_bytes)
 
         #write the length of the file on 4 bytes
         output_file.write(os.path.getsize(secret_file).to_bytes(4, 'little'))
@@ -82,13 +85,13 @@ def hide_secret(zip_file, secret_file, output_file, eocd):
         output_file.write(b_new)
 
 
-def inject_file(zip_file, secret_file, output_file = "ouput.zip"):
+def inject_file(zip_file, secret_file, output_file = "ouput.zip", byte_offset = 0):
 
     # Step 1: get End Of Central Directory record from ZIP file
     eocd = parse_eocd(zip_file)
 
     # Step 2: Create new file and hide secret in it
-    hide_secret(zip_file, secret_file, output_file, eocd)
+    hide_secret(zip_file, secret_file, output_file, byte_offset, eocd)
 
 
 if __name__ == "__main__":
@@ -101,11 +104,10 @@ if __name__ == "__main__":
                         help='name of secret the hide')
     parser.add_argument('output_file', type=str, nargs='?', default = "output.zip",
                         help='output ZIP archive')
+    parser.add_argument('byte_offset', type=int, nargs='?', default = 0,
+                        help='bytes offset of secret file')
 
     args = parser.parse_args()
 
-    #zip_file = 'test.zip'
-    #secret_file = 'secret.txt'
-    #output_file = "new_test.zip"
-    inject_file(args.zip_file, args.secret_file, args.output_file)
-    #inject_file(sys.argv[1], sys.argv[2], sys.argv[3])
+    inject_file(args.zip_file, args.secret_file, args.output_file, args.byte_offset)
+
